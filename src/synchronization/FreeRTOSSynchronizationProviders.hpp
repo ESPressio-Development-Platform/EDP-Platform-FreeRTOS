@@ -74,12 +74,11 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
                     return ESPressio::Platform::Synchronization::LockAcquireResult::ProviderFailure;
                 }
 
-                return xSemaphoreTake(
-                    _handle,
-                    ESPressio::Platform::FreeRTOS::Detail::ToTicks(
-                        timeout
-                    )
-                ) == pdTRUE
+                ESPressio::Platform::FreeRTOS::Detail::WaitBudget budget(timeout);
+
+                return budget.Take(
+                    _handle
+                )
                     ? ESPressio::Platform::Synchronization::LockAcquireResult::Acquired
                     : ESPressio::Platform::Synchronization::LockAcquireResult::TimedOut;
             }
@@ -167,14 +166,56 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
                     return ESPressio::Platform::Synchronization::LockAcquireResult::ProviderFailure;
                 }
 
-                return xSemaphoreTakeRecursive(
-                    _handle,
-                    ESPressio::Platform::FreeRTOS::Detail::ToTicks(
+                ESPressio::Platform::FreeRTOS::Detail::WaitBudget budget(timeout);
+
+                // FreeRTOS recursive mutexes require the dedicated recursive take API. Finite
+                // waits are already bounded by the native tick range on supported embedded
+                // targets; larger waits are serviced in repeated native ranges.
+                if (timeout.IsForever()) {
+                    return xSemaphoreTakeRecursive(
+                        _handle,
+                        portMAX_DELAY
+                    ) == pdTRUE
+                        ? ESPressio::Platform::Synchronization::LockAcquireResult::Acquired
+                        : ESPressio::Platform::Synchronization::LockAcquireResult::TimedOut;
+                }
+
+                if (timeout.IsNoWait()) {
+                    return xSemaphoreTakeRecursive(
+                        _handle,
+                        0U
+                    ) == pdTRUE
+                        ? ESPressio::Platform::Synchronization::LockAcquireResult::Acquired
+                        : ESPressio::Platform::Synchronization::LockAcquireResult::TimedOut;
+                }
+
+                const auto totalTicks =
+                    ESPressio::Platform::FreeRTOS::Detail::ToTotalTicks(
                         timeout
-                    )
-                ) == pdTRUE
-                    ? ESPressio::Platform::Synchronization::LockAcquireResult::Acquired
-                    : ESPressio::Platform::Synchronization::LockAcquireResult::TimedOut;
+                    );
+                auto remainingTicks = totalTicks;
+                constexpr auto maximumChunk =
+                    static_cast<std::uint64_t>(portMAX_DELAY) - 1ULL;
+
+                while (remainingTicks > 0U) {
+                    const auto chunk =
+                        remainingTicks < maximumChunk
+                            ? remainingTicks
+                            : maximumChunk;
+
+                    if (
+                        xSemaphoreTakeRecursive(
+                            _handle,
+                            static_cast<TickType_t>(chunk)
+                        ) == pdTRUE
+                    ) {
+                        return ESPressio::Platform::Synchronization::LockAcquireResult::Acquired;
+                    }
+
+                    remainingTicks -= chunk;
+                }
+
+                return ESPressio::Platform::Synchronization::LockAcquireResult::TimedOut;
             }
 
             /// Releases one recursive acquisition owned by the current execution context.
@@ -256,11 +297,9 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
                 SemaphoreHandle_t handle,
                 ESPressio::Platform::FreeRTOS::Detail::WaitBudget& budget
             ) noexcept {
-                return handle != nullptr &&
-                    xSemaphoreTake(
-                        handle,
-                        budget.Remaining()
-                    ) == pdTRUE;
+                return budget.Take(
+                    handle
+                );
             }
 
         public:
@@ -558,12 +597,11 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
                     return ESPressio::Platform::Synchronization::SemaphoreAcquireResult::NotInitialized;
                 }
 
-                return xSemaphoreTake(
-                    _handle,
-                    ESPressio::Platform::FreeRTOS::Detail::ToTicks(
-                        timeout
-                    )
-                ) == pdTRUE
+                ESPressio::Platform::FreeRTOS::Detail::WaitBudget budget(timeout);
+
+                return budget.Take(
+                    _handle
+                )
                     ? ESPressio::Platform::Synchronization::SemaphoreAcquireResult::Acquired
                     : ESPressio::Platform::Synchronization::SemaphoreAcquireResult::TimedOut;
             }
@@ -708,12 +746,11 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
                     return ESPressio::Platform::Synchronization::SignalWaitResult::ProviderFailure;
                 }
 
-                return xSemaphoreTake(
-                    _handle,
-                    ESPressio::Platform::FreeRTOS::Detail::ToTicks(
-                        timeout
-                    )
-                ) == pdTRUE
+                ESPressio::Platform::FreeRTOS::Detail::WaitBudget budget(timeout);
+
+                return budget.Take(
+                    _handle
+                )
                     ? ESPressio::Platform::Synchronization::SignalWaitResult::Signaled
                     : ESPressio::Platform::Synchronization::SignalWaitResult::TimedOut;
             }

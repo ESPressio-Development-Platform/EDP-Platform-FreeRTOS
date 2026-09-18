@@ -4,6 +4,7 @@
 #include <limits>
 
 #include <FreeRTOS.h>
+#include <semphr.h>
 #include <task.h>
 
 #include <ESPressio_Platform.hpp>
@@ -19,44 +20,44 @@ namespace ESPressio::Platform::FreeRTOS::Detail {
         static_cast<std::uint64_t>(configTICK_RATE_HZ);
 
 
-    /// Converts an ESPressio wait request into FreeRTOS ticks without early timeout.
-    inline TickType_t ToTicks(
+    /// Converts a finite nanosecond duration into a rounded-up 64-bit FreeRTOS tick budget.
+    inline std::uint64_t ToTotalTicks(
         ESPressio::Platform::Synchronization::WaitTimeout timeout
     ) noexcept {
-        if (timeout.IsForever()) { return portMAX_DELAY; }
-
-        if (timeout.IsNoWait()) { return static_cast<TickType_t>(0U); }
+        if (!timeout.IsFinite()) { return 0U; }
 
         const auto nanoseconds = timeout.Nanoseconds();
         const auto wholeSeconds = nanoseconds / NanosecondsPerSecond;
         const auto remainingNanoseconds = nanoseconds % NanosecondsPerSecond;
         const auto tickRate = static_cast<std::uint64_t>(configTICK_RATE_HZ);
-        const auto maximumFiniteTicks = static_cast<std::uint64_t>(portMAX_DELAY) - 1ULL;
 
-        if (wholeSeconds > maximumFiniteTicks / tickRate) {
-            return static_cast<TickType_t>(maximumFiniteTicks);
+        if (
+            tickRate != 0U &&
+            wholeSeconds > std::numeric_limits<std::uint64_t>::max() / tickRate
+        ) {
+            return std::numeric_limits<std::uint64_t>::max();
         }
 
         auto ticks = wholeSeconds * tickRate;
+
         const auto fractionalTicks = (
             remainingNanoseconds * tickRate + NanosecondsPerSecond - 1ULL
         ) / NanosecondsPerSecond;
 
-        if (fractionalTicks > maximumFiniteTicks - ticks) {
-            return static_cast<TickType_t>(maximumFiniteTicks);
+        if (
+            fractionalTicks >
+            std::numeric_limits<std::uint64_t>::max() - ticks
+        ) {
+            return std::numeric_limits<std::uint64_t>::max();
         }
 
         ticks += fractionalTicks;
 
-        if (ticks == 0ULL) { ticks = 1ULL; }
-
-        if (ticks > maximumFiniteTicks) { ticks = maximumFiniteTicks; }
-
-        return static_cast<TickType_t>(ticks);
+        return ticks == 0U ? 1U : ticks;
     }
 
 
-    /// Tracks one total FreeRTOS wait budget across multiple native acquisitions.
+    /// Tracks one total FreeRTOS wait budget across one or more native semaphore acquisitions.
     class WaitBudget final {
 
         private:
@@ -66,11 +67,35 @@ namespace ESPressio::Platform::FreeRTOS::Detail {
             /// Original ESPressio wait request.
             ESPressio::Platform::Synchronization::WaitTimeout _timeout;
 
-            /// Native finite tick budget.
-            TickType_t _ticks;
+            /// Remaining finite wait budget expressed in native ticks.
+            std::uint64_t _remainingTicks;
 
-            /// Tick coordinate captured when the budget was created.
-            TickType_t _start;
+            /// Last observed native tick coordinate.
+            TickType_t _lastTick;
+
+
+            // Budget accounting.
+
+            /// Removes native time elapsed since the previous budget observation.
+            void ConsumeElapsed() noexcept {
+                if (!_timeout.IsFinite() || _remainingTicks == 0U) { return; }
+
+                const auto now = xTaskGetTickCount();
+                const auto elapsed = static_cast<TickType_t>(
+                    now - _lastTick
+                );
+
+                _lastTick = now;
+
+                const auto elapsedTicks = static_cast<std::uint64_t>(elapsed);
+
+                if (elapsedTicks >= _remainingTicks) {
+                    _remainingTicks = 0U;
+                    return;
+                }
+
+                _remainingTicks -= elapsedTicks;
+            }
 
         public:
 
@@ -81,27 +106,70 @@ namespace ESPressio::Platform::FreeRTOS::Detail {
                 ESPressio::Platform::Synchronization::WaitTimeout timeout
             ) noexcept :
                 _timeout(timeout),
-                _ticks(ToTicks(timeout)),
-                _start(xTaskGetTickCount()) {}
+                _remainingTicks(ToTotalTicks(timeout)),
+                _lastTick(xTaskGetTickCount()) {}
 
 
-            // Remaining-time inspection.
+            // Native waiting.
 
-            /// Returns the native wait duration remaining in this budget.
-            TickType_t Remaining() const noexcept {
-                if (_timeout.IsForever()) { return portMAX_DELAY; }
+            /// Takes one FreeRTOS semaphore while preserving the complete ESPressio wait budget.
+            bool Take(
+                SemaphoreHandle_t handle
+            ) noexcept {
+                if (handle == nullptr) { return false; }
 
-                if (_timeout.IsNoWait()) { return static_cast<TickType_t>(0U); }
+                if (_timeout.IsForever()) {
+                    return xSemaphoreTake(
+                        handle,
+                        portMAX_DELAY
+                    ) == pdTRUE;
+                }
 
-                const auto elapsed = static_cast<TickType_t>(
-                    xTaskGetTickCount() - _start
-                );
+                if (_timeout.IsNoWait()) {
+                    return xSemaphoreTake(
+                        handle,
+                        static_cast<TickType_t>(0U)
+                    ) == pdTRUE;
+                }
 
-                if (elapsed >= _ticks) { return static_cast<TickType_t>(0U); }
+                ConsumeElapsed();
 
-                return static_cast<TickType_t>(
-                    _ticks - elapsed
-                );
+                constexpr auto maximumChunk =
+                    static_cast<std::uint64_t>(portMAX_DELAY) - 1ULL;
+
+                while (_remainingTicks > 0U) {
+                    const auto requestedChunk =
+                        _remainingTicks < maximumChunk
+                            ? _remainingTicks
+                            : maximumChunk;
+
+                    const auto before = xTaskGetTickCount();
+
+                    const auto result = xSemaphoreTake(
+                        handle,
+                        static_cast<TickType_t>(requestedChunk)
+                    );
+
+                    const auto after = xTaskGetTickCount();
+                    const auto elapsed = static_cast<TickType_t>(
+                        after - before
+                    );
+                    const auto elapsedTicks = static_cast<std::uint64_t>(elapsed);
+
+                    _lastTick = after;
+
+                    if (elapsedTicks >= _remainingTicks) {
+                        _remainingTicks = 0U;
+                    } else if (elapsedTicks > 0U) {
+                        _remainingTicks -= elapsedTicks;
+                    } else if (result != pdTRUE) {
+                        _remainingTicks -= requestedChunk;
+                    }
+
+                    if (result == pdTRUE) { return true; }
+                }
+
+                return false;
             }
 
     };
