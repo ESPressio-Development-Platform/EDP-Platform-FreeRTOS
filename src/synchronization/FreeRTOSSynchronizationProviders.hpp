@@ -227,7 +227,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
             /// Serializes writers and gates new readers behind waiting writers.
             StaticSemaphore_t _turnstileStorage{};
 
-            /// Excludes writers while one or more readers are active.
+            /// Stores the binary semaphore excluding writers while readers are active.
             StaticSemaphore_t _resourceStorage{};
 
             /// Reader-count mutex.
@@ -236,7 +236,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
             /// Writer turnstile mutex.
             SemaphoreHandle_t _turnstile;
 
-            /// Shared resource mutex.
+            /// Shared resource binary semaphore; ownership may pass between distinct reader tasks.
             SemaphoreHandle_t _resource;
 
 
@@ -280,10 +280,16 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
                     )
                 ),
                 _resource(
-                    xSemaphoreCreateMutexStatic(
+                    xSemaphoreCreateBinaryStatic(
                         &_resourceStorage
                     )
-                ) {}
+                ) {
+                if (_resource != nullptr) {
+                    (void)xSemaphoreGive(
+                        _resource
+                    );
+                }
+            }
 
             /// Prevents copying read/write lock state.
             ReadWriteMutexProvider(const ReadWriteMutexProvider&) = delete;
@@ -587,18 +593,6 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
                     &higherPriorityTaskWoken
                 );
 
-#if defined(portYIELD_FROM_ISR)
-                if (higherPriorityTaskWoken == pdTRUE) {
-                    portYIELD_FROM_ISR(
-                        higherPriorityTaskWoken
-                    );
-                }
-#elif defined(portEND_SWITCHING_ISR)
-                portEND_SWITCHING_ISR(
-                    higherPriorityTaskWoken
-                );
-#endif
-
                 return result == pdTRUE
                     ? ESPressio::Platform::Synchronization::SemaphoreReleaseResult::Released
                     : ESPressio::Platform::Synchronization::SemaphoreReleaseResult::CapacityReached;
@@ -696,18 +690,6 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
                     _handle,
                     &higherPriorityTaskWoken
                 );
-
-#if defined(portYIELD_FROM_ISR)
-                if (higherPriorityTaskWoken == pdTRUE) {
-                    portYIELD_FROM_ISR(
-                        higherPriorityTaskWoken
-                    );
-                }
-#elif defined(portEND_SWITCHING_ISR)
-                portEND_SWITCHING_ISR(
-                    higherPriorityTaskWoken
-                );
-#endif
 
                 // pdFAIL is also a valid coalesced state for a binary semaphore: it means
                 // the latch was already available before this notification.
