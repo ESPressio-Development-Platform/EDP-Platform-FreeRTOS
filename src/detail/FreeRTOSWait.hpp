@@ -97,6 +97,35 @@ namespace ESPressio::Platform::FreeRTOS::Detail {
                 _remainingTicks -= elapsedTicks;
             }
 
+            /// Removes elapsed time after one finite native wait operation.
+            void ConsumeWait(
+                TickType_t before,
+                TickType_t after,
+                std::uint64_t requestedChunk,
+                bool succeeded
+            ) noexcept {
+                const auto elapsed = static_cast<TickType_t>(
+                    after - before
+                );
+                const auto elapsedTicks = static_cast<std::uint64_t>(elapsed);
+
+                _lastTick = after;
+
+                if (elapsedTicks >= _remainingTicks) {
+                    _remainingTicks = 0U;
+                    return;
+                }
+
+                if (elapsedTicks > 0U) {
+                    _remainingTicks -= elapsedTicks;
+                    return;
+                }
+
+                if (!succeeded) {
+                    _remainingTicks -= requestedChunk;
+                }
+            }
+
         public:
 
             // Construction.
@@ -112,7 +141,7 @@ namespace ESPressio::Platform::FreeRTOS::Detail {
 
             // Native waiting.
 
-            /// Takes one FreeRTOS semaphore while preserving the complete ESPressio wait budget.
+            /// Takes one ordinary FreeRTOS semaphore while preserving the complete wait budget.
             bool Take(
                 SemaphoreHandle_t handle
             ) noexcept {
@@ -151,20 +180,66 @@ namespace ESPressio::Platform::FreeRTOS::Detail {
                     );
 
                     const auto after = xTaskGetTickCount();
-                    const auto elapsed = static_cast<TickType_t>(
-                        after - before
+
+                    ConsumeWait(
+                        before,
+                        after,
+                        requestedChunk,
+                        result == pdTRUE
                     );
-                    const auto elapsedTicks = static_cast<std::uint64_t>(elapsed);
 
-                    _lastTick = after;
+                    if (result == pdTRUE) { return true; }
+                }
 
-                    if (elapsedTicks >= _remainingTicks) {
-                        _remainingTicks = 0U;
-                    } else if (elapsedTicks > 0U) {
-                        _remainingTicks -= elapsedTicks;
-                    } else if (result != pdTRUE) {
-                        _remainingTicks -= requestedChunk;
-                    }
+                return false;
+            }
+
+            /// Takes one recursive FreeRTOS mutex while preserving the complete wait budget.
+            bool TakeRecursive(
+                SemaphoreHandle_t handle
+            ) noexcept {
+                if (handle == nullptr) { return false; }
+
+                if (_timeout.IsForever()) {
+                    return xSemaphoreTakeRecursive(
+                        handle,
+                        portMAX_DELAY
+                    ) == pdTRUE;
+                }
+
+                if (_timeout.IsNoWait()) {
+                    return xSemaphoreTakeRecursive(
+                        handle,
+                        static_cast<TickType_t>(0U)
+                    ) == pdTRUE;
+                }
+
+                ConsumeElapsed();
+
+                constexpr auto maximumChunk =
+                    static_cast<std::uint64_t>(portMAX_DELAY) - 1ULL;
+
+                while (_remainingTicks > 0U) {
+                    const auto requestedChunk =
+                        _remainingTicks < maximumChunk
+                            ? _remainingTicks
+                            : maximumChunk;
+
+                    const auto before = xTaskGetTickCount();
+
+                    const auto result = xSemaphoreTakeRecursive(
+                        handle,
+                        static_cast<TickType_t>(requestedChunk)
+                    );
+
+                    const auto after = xTaskGetTickCount();
+
+                    ConsumeWait(
+                        before,
+                        after,
+                        requestedChunk,
+                        result == pdTRUE
+                    );
 
                     if (result == pdTRUE) { return true; }
                 }
