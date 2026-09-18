@@ -36,7 +36,9 @@ No FreeRTOS heap allocation is used for the native task.
 
 The task begins behind an internal start gate. After the user entry function returns it signals completion and suspends until the owner calls `Destroy()`.
 
-`Destroy()` refuses to forcibly delete a still-running user execution scope.
+`Join()` is the ownership synchronization point after a started entry returns. `Destroy()` refuses to forcibly delete a running or unjoined execution scope.
+
+When `uxTaskGetStackHighWaterMark()` is enabled by the FreeRTOS configuration, the provider reports minimum free stack storage normalized to bytes.
 
 ## Waits
 
