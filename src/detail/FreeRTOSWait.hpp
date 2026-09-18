@@ -194,6 +194,8 @@ namespace ESPressio::Platform::FreeRTOS::Detail {
                 return false;
             }
 
+#if ( configUSE_RECURSIVE_MUTEXES == 1 )
+
             /// Takes one recursive FreeRTOS mutex while preserving the complete wait budget.
             bool TakeRecursive(
                 SemaphoreHandle_t handle
@@ -246,6 +248,8 @@ namespace ESPressio::Platform::FreeRTOS::Detail {
 
                 return false;
             }
+
+#endif
 
     };
 

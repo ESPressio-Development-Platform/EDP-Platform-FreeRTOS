@@ -88,6 +88,26 @@ namespace Test {
         );
 #endif
 
+
+#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( INCLUDE_vTaskDelete == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) && ( INCLUDE_xTaskGetCurrentTaskHandle == 1 )
+        using ExecutionProvider = FreeRTOS::Execution::ExecutionContextProvider;
+        using ExecutionContract = Execution::Detail::ExecutionContextProviderTraits<ExecutionProvider>;
+
+        static_assert(
+            ExecutionContract::Properties::template Value<
+                Execution::CallerSuppliedStorage
+            >,
+            "FreeRTOS execution provider must use caller-supplied storage"
+        );
+
+        static_assert(
+            !ExecutionContract::Properties::template Value<
+                Execution::SupportsProcessorAffinity
+            >,
+            "Vanilla FreeRTOS execution provider must not claim processor affinity"
+        );
+#endif
+
         return 0;
     }
 
