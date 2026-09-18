@@ -1,7 +1,7 @@
 {
   "name": "EDP-Platform-FreeRTOS",
-  "description": "Generic FreeRTOS backend implementations for EDP-Platform",
-  "keywords": "espressio,platform,freertos,rtos,backend,concurrency,embedded",
+  "description": "FreeRTOS concrete providers for EDP-Platform",
+  "keywords": "espressio,platform,freertos,mutex,semaphore,signal,execution",
   "homepage": "https://espressio.org",
   "authors": {
     "name": "Simon J. Stuart",
@@ -23,7 +23,8 @@
   "dependencies": [
     {
       "name": "EDP-Platform",
-      "version": "https://github.com/ESPressio-Development-Platform/EDP-Platform.git#main"
+      "version": "https://github.com/ESPressio-Development-Platform/EDP-Platform.git#main",
+      "platforms": "*"
     }
   ]
 }

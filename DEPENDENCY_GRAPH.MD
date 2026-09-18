@@ -5,16 +5,15 @@
 ```text
 EDP-Platform-FreeRTOS
 └── EDP-Platform [mandatory]
-    └── EDP-System [mandatory, transitive]
+    └── EDP-System [transitive]
 ```
 
 ## Mandatory Dependencies
 
-- `EDP-Platform` — owns the platform-neutral capability contracts implemented by this FreeRTOS backend.
-- `EDP-System` — transitive through `EDP-Platform` for Composition.
+- `EDP-Platform` — defines the Platform abstractions and provider contracts implemented by the FreeRTOS concrete providers.
 
 ## Optional Dependencies
 
-There are currently no optional ESPressio library dependencies.
+`EDP-Platform-FreeRTOS` has no optional ESPressio library dependencies.
 
-FreeRTOS/toolchain facilities and the C++ standard atomic implementation are target facilities, not ESPressio library dependencies.
+FreeRTOS itself is the underlying concrete runtime and is not an ESPressio-library dependency.

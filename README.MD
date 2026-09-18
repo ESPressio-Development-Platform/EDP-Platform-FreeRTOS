@@ -1,32 +1,59 @@
-# ESPressio Platform - FreeRTOS
+# ESPressio Platform FreeRTOS
 
-`EDP-Platform-FreeRTOS` supplies FreeRTOS-environment concrete implementations for abstractions defined by `EDP-Platform`.
+`EDP-Platform-FreeRTOS` provides concrete `EDP-Platform` implementations backed specifically by portable FreeRTOS APIs.
 
-## Contents
+## Providers
 
-- [AtomicWord32 Provider](./docs/ATOMIC-WORD32.MD)  
-  Supplies the lock-free four-byte `AtomicWord32` capability required by Platform read-mostly concurrency facilities such as `ConcurrentSnapshot`.
+Where the corresponding FreeRTOS configuration enables the required static primitive, this repository provides:
+
+```text
+ExecutionContext
+Mutex
+RecursiveMutex
+ReadWriteMutex
+CountingSemaphore
+Signal
+```
+
+The `ReadWriteMutex` provider is assembled from static FreeRTOS mutex primitives and uses a writer turnstile to prevent an already-waiting writer from being bypassed indefinitely by new readers.
+
+`SpinLock` is not provided here because vanilla FreeRTOS does not define one portable cross-port spin-lock API.
+
+`AtomicWord32` is no longer owned by this repository because its implementation used only Standard C++ `std::atomic`. That provider now belongs to `EDP-Platform-Portable`.
+
+## Static Resource Policy
+
+The execution provider uses `xTaskCreateStatic`.
+
+The caller supplies:
+
+```text
+StaticTask_t-compatible control storage
+StackType_t-compatible stack storage
+```
+
+No FreeRTOS heap allocation is used for the native task.
+
+The task begins behind an internal start gate. After the user entry function returns it signals completion and suspends until the owner calls `Destroy()`.
+
+`Destroy()` refuses to forcibly delete a still-running user execution scope.
+
+## Waits
+
+ESPressio finite waits are expressed in nanoseconds.
+
+The provider rounds them upward to FreeRTOS ticks so unit conversion never causes an earlier timeout.
+
+## Interrupt Operations
+
+The counting semaphore and signal providers expose FreeRTOS ISR-safe release/notification paths.
 
 ## Dependencies
 
 ```text
 EDP-Platform-FreeRTOS
 └── EDP-Platform [mandatory]
-    └── EDP-System [mandatory, transitive]
+    └── EDP-System [transitive]
 ```
 
-There are currently no optional ESPressio library dependencies.
-
-See [DEPENDENCY_GRAPH.MD](./DEPENDENCY_GRAPH.MD) for the maintained dependency graph.
-
-## Demos
-
-The `AtomicWord32` provider demonstration is available under [`./demos/atomic-word-basic`](./demos/atomic-word-basic) for:
-
-- Arduino IDE;
-- PlatformIO Arduino;
-- PlatformIO ESP-IDF.
-
-## Development Status
-
-Only Platform capabilities with an actual FreeRTOS concrete responsibility are added here. The current implementation is intentionally limited to the atomic-word prerequisite required by synchronized Clock work.
+See [DEPENDENCY_GRAPH.MD](./DEPENDENCY_GRAPH.MD).
