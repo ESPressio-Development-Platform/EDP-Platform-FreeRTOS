@@ -13,7 +13,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
 
     namespace Framework = ESPressio::System::CompositionFramework;
 
-#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) && ( configUSE_MUTEXES == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
+#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( configUSE_MUTEXES == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
 
     /// FreeRTOS static-mutex provider.
     class MutexProvider final : public Framework::Provider<
@@ -106,7 +106,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
 #endif
 
 
-#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) && ( configUSE_RECURSIVE_MUTEXES == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
+#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( configUSE_RECURSIVE_MUTEXES == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
 
     /// FreeRTOS static recursive-mutex provider.
     class RecursiveMutexProvider final : public Framework::Provider<
@@ -199,7 +199,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
 #endif
 
 
-#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) && ( configUSE_MUTEXES == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
+#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( configUSE_MUTEXES == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
 
     /// FreeRTOS reader/writer lock assembled from static mutex primitives.
     ///
@@ -461,7 +461,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
 #endif
 
 
-#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) && ( configUSE_COUNTING_SEMAPHORES == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
+#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( configUSE_COUNTING_SEMAPHORES == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
 
     /// FreeRTOS static counting-semaphore provider.
     class CountingSemaphoreProvider final : public Framework::Provider<
