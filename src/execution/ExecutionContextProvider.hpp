@@ -225,10 +225,10 @@ namespace ESPressio::Platform::FreeRTOS::Execution {
                     return ESPressio::Platform::Execution::ExecutionInitializationResult::InvalidStorage;
                 }
 
-                const auto stackDepthBytes = storage.StackBytes / sizeof(StackType_t);
+                const auto stackDepthElements = storage.StackBytes / sizeof(StackType_t);
 
                 if (
-                    stackDepthBytes >
+                    stackDepthElements >
                     static_cast<std::size_t>(
                         std::numeric_limits<configSTACK_DEPTH_TYPE>::max()
                     )
@@ -268,7 +268,7 @@ namespace ESPressio::Platform::FreeRTOS::Execution {
                 _handle = xTaskCreateStatic(
                     &NativeEntry,
                     name,
-                    static_cast<configSTACK_DEPTH_TYPE>(stackDepthBytes),
+                    static_cast<configSTACK_DEPTH_TYPE>(stackDepthElements),
                     this,
                     static_cast<UBaseType_t>(configuration.Priority),
                     static_cast<StackType_t*>(storage.StackAddress),

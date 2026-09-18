@@ -4,7 +4,7 @@
 
 ## Providers
 
-Where the corresponding FreeRTOS configuration enables the required static primitive, this repository provides:
+Where the corresponding FreeRTOS configuration enables the required static primitive and indefinite blocking semantics (`INCLUDE_vTaskSuspend == 1`), this repository provides:
 
 ```text
 ExecutionContext

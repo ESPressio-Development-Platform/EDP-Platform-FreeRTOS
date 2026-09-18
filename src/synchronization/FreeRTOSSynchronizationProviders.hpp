@@ -13,7 +13,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
 
     namespace Framework = ESPressio::System::CompositionFramework;
 
-#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( configUSE_MUTEXES == 1 )
+#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) && ( configUSE_MUTEXES == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
 
     /// FreeRTOS static-mutex provider.
     class MutexProvider final : public Framework::Provider<
@@ -106,7 +106,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
 #endif
 
 
-#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( configUSE_RECURSIVE_MUTEXES == 1 )
+#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) && ( configUSE_RECURSIVE_MUTEXES == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
 
     /// FreeRTOS static recursive-mutex provider.
     class RecursiveMutexProvider final : public Framework::Provider<
@@ -199,7 +199,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
 #endif
 
 
-#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( configUSE_MUTEXES == 1 )
+#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) && ( configUSE_MUTEXES == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
 
     /// FreeRTOS reader/writer lock assembled from static mutex primitives.
     ///
@@ -461,7 +461,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
 #endif
 
 
-#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( configUSE_COUNTING_SEMAPHORES == 1 )
+#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) && ( configUSE_COUNTING_SEMAPHORES == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
 
     /// FreeRTOS static counting-semaphore provider.
     class CountingSemaphoreProvider final : public Framework::Provider<
@@ -613,7 +613,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
 #endif
 
 
-#if ( configSUPPORT_STATIC_ALLOCATION == 1 )
+#if ( configSUPPORT_STATIC_ALLOCATION == 1 ) && ( INCLUDE_vTaskSuspend == 1 )
 
     /// FreeRTOS static binary-semaphore-backed latched signal provider.
     class SignalProvider final : public Framework::Provider<
@@ -676,19 +676,13 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
                     return ESPressio::Platform::Synchronization::SignalNotifyResult::ProviderFailure;
                 }
 
-                const auto result = xSemaphoreGive(
+                (void)xSemaphoreGive(
                     _handle
                 );
 
-                if (result == pdTRUE) {
-                    return ESPressio::Platform::Synchronization::SignalNotifyResult::Signaled;
-                }
-
-                return uxSemaphoreGetCount(
-                    _handle
-                ) > 0U
-                    ? ESPressio::Platform::Synchronization::SignalNotifyResult::Signaled
-                    : ESPressio::Platform::Synchronization::SignalNotifyResult::ProviderFailure;
+                // A binary semaphore that is already available is already latched, which is
+                // semantically the same successful Signal state for ESPressio.
+                return ESPressio::Platform::Synchronization::SignalNotifyResult::Signaled;
             }
 
             /// Latches the signal from interrupt context.
@@ -715,15 +709,10 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
                 );
 #endif
 
-                if (result == pdTRUE) {
-                    return ESPressio::Platform::Synchronization::SignalNotifyResult::Signaled;
-                }
-
-                return uxSemaphoreGetCountFromISR(
-                    _handle
-                ) > 0U
-                    ? ESPressio::Platform::Synchronization::SignalNotifyResult::Signaled
-                    : ESPressio::Platform::Synchronization::SignalNotifyResult::ProviderFailure;
+                // pdFAIL is also a valid coalesced state for a binary semaphore: it means
+                // the latch was already available before this notification.
+                (void)result;
+                return ESPressio::Platform::Synchronization::SignalNotifyResult::Signaled;
             }
 
 
