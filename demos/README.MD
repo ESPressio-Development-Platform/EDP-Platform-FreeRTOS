@@ -1,5 +1,10 @@
 # Demos
 
-Concrete FreeRTOS execution and synchronization demonstrations are provided by this repository.
+The FreeRTOS concrete provider repository includes:
 
-The former `atomic-word-basic` demonstration moved with the Standard C++ provider to `EDP-Platform-Portable`.
+- `synchronization-basic` — mutex, recursive mutex, read/write mutex, counting semaphore and latched signal providers;
+- `execution-context-basic` — caller-storage-backed static FreeRTOS execution context.
+
+Each demo provides Arduino IDE, PlatformIO Arduino and PlatformIO ESP-IDF surfaces as required by ESPressio policy.
+
+The selected FreeRTOS configuration must enable the static primitives used by the corresponding provider.
