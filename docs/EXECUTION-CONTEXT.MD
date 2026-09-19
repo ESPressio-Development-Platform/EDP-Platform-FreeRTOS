@@ -69,7 +69,7 @@ entry function
 entry parameter
 ```
 
-Priority must be less than `configMAX_PRIORITIES`, and the entry function must be non-null.
+The portable `ExecutionPriority` values `Low`, `Normal`, `High`, and `Critical` are mapped monotonically across the configured native FreeRTOS priority range. `Critical` maps to the highest available native priority; `Low` avoids the idle priority where the native range permits. Small native priority ranges may collapse adjacent logical levels. The entry function must be non-null.
 
 The portable FreeRTOS provider does not support processor affinity. Any configuration other than `ProcessorAffinity::Any()` returns `UnsupportedAffinity`.
 
