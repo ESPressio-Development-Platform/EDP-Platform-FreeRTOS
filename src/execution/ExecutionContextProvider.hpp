@@ -3,9 +3,7 @@
 #include <cstdint>
 #include <limits>
 
-#include <FreeRTOS.h>
-#include <semphr.h>
-#include <task.h>
+#include "../detail/FreeRTOSHeaders.hpp"
 
 #include <ESPressio_Platform.hpp>
 
