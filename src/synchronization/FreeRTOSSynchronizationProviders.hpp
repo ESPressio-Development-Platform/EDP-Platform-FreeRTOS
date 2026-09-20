@@ -2,8 +2,7 @@
 
 #include <cstdint>
 
-#include <FreeRTOS.h>
-#include <semphr.h>
+#include "../detail/FreeRTOSHeaders.hpp"
 
 #include <ESPressio_Platform.hpp>
 
