@@ -94,6 +94,46 @@ namespace Test {
         using ExecutionContract = Execution::Detail::ExecutionContextProviderTraits<ExecutionProvider>;
 
         static_assert(
+            ESPressio::Platform::FreeRTOS::Execution::Detail::NativePriorityFor(
+                Execution::ExecutionPriority::Low
+            ) <=
+            ESPressio::Platform::FreeRTOS::Execution::Detail::NativePriorityFor(
+                Execution::ExecutionPriority::Normal
+            ),
+            "Native priority mapping must preserve logical ordering from Low to Normal"
+        );
+
+        static_assert(
+            ESPressio::Platform::FreeRTOS::Execution::Detail::NativePriorityFor(
+                Execution::ExecutionPriority::Normal
+            ) <=
+            ESPressio::Platform::FreeRTOS::Execution::Detail::NativePriorityFor(
+                Execution::ExecutionPriority::High
+            ),
+            "Native priority mapping must preserve logical ordering from Normal to High"
+        );
+
+        static_assert(
+            ESPressio::Platform::FreeRTOS::Execution::Detail::NativePriorityFor(
+                Execution::ExecutionPriority::High
+            ) <=
+            ESPressio::Platform::FreeRTOS::Execution::Detail::NativePriorityFor(
+                Execution::ExecutionPriority::Critical
+            ),
+            "Native priority mapping must preserve logical ordering from High to Critical"
+        );
+
+        static_assert(
+            ESPressio::Platform::FreeRTOS::Execution::Detail::NativePriorityFor(
+                Execution::ExecutionPriority::Critical
+            ) ==
+            static_cast<UBaseType_t>(
+                configMAX_PRIORITIES - 1U
+            ),
+            "Critical must map to the highest configured native priority"
+        );
+
+        static_assert(
             ExecutionContract::Properties::template Value<
                 Execution::CallerSuppliedStorage
             >,
