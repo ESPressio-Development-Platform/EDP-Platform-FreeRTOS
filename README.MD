@@ -42,3 +42,7 @@ See [DEPENDENCY_GRAPH.MD](./DEPENDENCY_GRAPH.MD).
 ## Demos
 
 Buildable demonstrations are provided under [`./demos`](./demos).
+
+## C++ Language Baseline
+
+ESPressio requires C++20. PlatformIO-compatible ESP32 examples should use a maintained C++20-capable PIOArduino platform package rather than the outdated Arduino-ESP32 package bundled by stock PlatformIO.
