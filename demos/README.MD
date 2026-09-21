@@ -8,3 +8,7 @@ The FreeRTOS concrete provider repository includes:
 Each demo provides Arduino IDE, PlatformIO Arduino and PlatformIO ESP-IDF surfaces as required by ESPressio policy.
 
 The selected FreeRTOS configuration must enable the static primitives used by the corresponding provider.
+
+## C++ Language Baseline
+
+All PlatformIO-compatible demos require C++20 and explicitly select the maintained PIOArduino ESP32 platform package.
