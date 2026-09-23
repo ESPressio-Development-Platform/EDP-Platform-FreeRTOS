@@ -31,7 +31,7 @@ namespace ESPressio::Platform::FreeRTOS::Execution {
     /// returns it signals completion and suspends itself until the owner joins and destroys it.
     class ExecutionContextProvider final : public Framework::Provider<
         ESPressio::Platform::Domain,
-        Framework::Provides<
+        Framework::Offers<
             Framework::Offer<
                 ESPressio::Platform::Execution::ExecutionContext,
                 Framework::PropertyValue<ESPressio::Platform::Execution::CallerSuppliedStorage, true>,
