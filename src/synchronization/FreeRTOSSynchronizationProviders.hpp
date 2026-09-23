@@ -17,7 +17,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
     /// FreeRTOS static-mutex provider.
     class MutexProvider final : public Framework::Provider<
         ESPressio::Platform::Domain,
-        Framework::Provides<
+        Framework::Offers<
             Framework::Offer<
                 ESPressio::Platform::Synchronization::Mutex,
                 Framework::PropertyValue<
@@ -109,7 +109,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
     /// FreeRTOS static recursive-mutex provider.
     class RecursiveMutexProvider final : public Framework::Provider<
         ESPressio::Platform::Domain,
-        Framework::Provides<
+        Framework::Offers<
             Framework::Offer<
                 ESPressio::Platform::Synchronization::RecursiveMutex,
                 Framework::PropertyValue<
@@ -203,7 +203,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
     /// New readers pass through a writer turnstile so a waiting writer can prevent reader starvation.
     class ReadWriteMutexProvider final : public Framework::Provider<
         ESPressio::Platform::Domain,
-        Framework::Provides<
+        Framework::Offers<
             Framework::Offer<
                 ESPressio::Platform::Synchronization::ReadWriteMutex,
                 Framework::PropertyValue<
@@ -467,7 +467,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
     /// FreeRTOS static counting-semaphore provider.
     class CountingSemaphoreProvider final : public Framework::Provider<
         ESPressio::Platform::Domain,
-        Framework::Provides<
+        Framework::Offers<
             Framework::Offer<
                 ESPressio::Platform::Synchronization::CountingSemaphore,
                 Framework::PropertyValue<
@@ -606,7 +606,7 @@ namespace ESPressio::Platform::FreeRTOS::Synchronization {
     /// FreeRTOS static binary-semaphore-backed latched signal provider.
     class SignalProvider final : public Framework::Provider<
         ESPressio::Platform::Domain,
-        Framework::Provides<
+        Framework::Offers<
             Framework::Offer<
                 ESPressio::Platform::Synchronization::Signal,
                 Framework::PropertyValue<
